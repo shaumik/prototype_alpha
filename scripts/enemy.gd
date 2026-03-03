@@ -63,10 +63,18 @@ func take_damage(amount: int) -> void:
 func die() -> void:
     died.emit(score_value)
     
-    # 10% chance to drop powerup
+    # 10% chance to drop permanent or temporary powerup
     if randf() < 0.1:
         var powerup = PowerupScene.instantiate()
         powerup.global_position = global_position
+        powerup.randomize_type = true
+        get_tree().current_scene.call_deferred("add_child", powerup)
+    elif randf() < 0.05:
+        var buffs = [Powerup.PowerupType.PERM_DMG, Powerup.PowerupType.PERM_SPEED, Powerup.PowerupType.PERM_HP]
+        var powerup = PowerupScene.instantiate()
+        powerup.global_position = global_position
+        powerup.type = buffs[randi() % buffs.size()]
+        powerup.randomize_type = false
         get_tree().current_scene.call_deferred("add_child", powerup)
         
     queue_free()

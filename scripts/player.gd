@@ -16,6 +16,9 @@ var current_powerup: int = -1
 var is_shielded: bool = false
 var default_fire_rate: float
 var base_speed: float
+var base_damage: int = 1
+var perm_damage_bonus: int = 0
+var perm_speed_bonus: float = 0.0
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var muzzle: Marker2D = $Muzzle
@@ -23,6 +26,7 @@ var base_speed: float
 var Laser = preload("res://scenes/laser.tscn")
 
 signal health_changed(new_health)
+signal stats_changed(hp, pwr, spd)
 signal died
 
 func _ready() -> void:
@@ -42,6 +46,11 @@ func _ready() -> void:
     powerup_timer.one_shot = true
     powerup_timer.timeout.connect(_on_powerup_timeout)
     add_child(powerup_timer)
+    
+    call_deferred("emit_stats_changed")
+
+func emit_stats_changed() -> void:
+    stats_changed.emit(current_health, base_damage + perm_damage_bonus, speed)
 
 func _physics_process(_delta: float) -> void:
     if is_dead:
@@ -71,12 +80,14 @@ func fire_weapon() -> void:
             laser.position = muzzle.global_position
             # Angle offset is enough now that laser respects rotation
             laser.rotation = i * 0.2
+            laser.damage = base_damage + perm_damage_bonus
             get_tree().current_scene.add_child(laser)
     else:
         var laser = Laser.instantiate()
         laser.position = muzzle.global_position
         if current_powerup == Powerup.PowerupType.PIERCE:
             laser.is_piercing = true
+        laser.damage = base_damage + perm_damage_bonus
         get_tree().current_scene.add_child(laser)
 
 func _on_fire_timer_timeout() -> void:
@@ -92,6 +103,7 @@ func take_damage(amount: int) -> void:
         
     current_health -= amount
     health_changed.emit(current_health)
+    emit_stats_changed()
     
     # Simple flash effect
     sprite.modulate = Color.RED
@@ -107,9 +119,48 @@ func die() -> void:
     queue_free()
 
 func apply_powerup(type: int) -> void:
+    if type == Powerup.PowerupType.PERM_DMG:
+        perm_damage_bonus += 1
+        emit_stats_changed()
+        
+        sprite.modulate = Color.RED
+        await get_tree().create_timer(0.2).timeout
+        if not is_shielded:
+            sprite.modulate = Color.WHITE
+        else:
+            sprite.modulate = Color.AQUA
+        return
+    elif type == Powerup.PowerupType.PERM_SPEED:
+        perm_speed_bonus += 20.0
+        base_speed += 20.0
+        speed += 20.0
+        emit_stats_changed()
+        
+        sprite.modulate = Color.DEEP_SKY_BLUE
+        await get_tree().create_timer(0.2).timeout
+        if not is_shielded:
+            sprite.modulate = Color.WHITE
+        else:
+            sprite.modulate = Color.AQUA
+        return
+    elif type == Powerup.PowerupType.PERM_HP:
+        max_health += 1
+        current_health += 1
+        health_changed.emit(current_health)
+        emit_stats_changed()
+        
+        sprite.modulate = Color.CRIMSON
+        await get_tree().create_timer(0.2).timeout
+        if not is_shielded:
+            sprite.modulate = Color.WHITE
+        else:
+            sprite.modulate = Color.AQUA
+        return
+
     if type == Powerup.PowerupType.HEAL:
         current_health = min(max_health, current_health + 1)
         health_changed.emit(current_health)
+        emit_stats_changed()
         
         # Flash green
         sprite.modulate = Color.GREEN

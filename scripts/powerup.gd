@@ -1,17 +1,19 @@
 extends Area2D
 class_name Powerup
 
-enum PowerupType { SPREAD, RAPID, SHIELD, SPEED, PIERCE, HEAL }
+enum PowerupType { SPREAD, RAPID, SHIELD, SPEED, PIERCE, HEAL, PERM_DMG, PERM_SPEED, PERM_HP }
 
 @export var speed: float = 100.0
 @export var type: PowerupType = PowerupType.SPREAD
+@export var randomize_type: bool = true
 
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var label: Label = $Label
 
 func _ready() -> void:
     # Randomize powerup type if not specifically set
-    type = randi() % PowerupType.size()
+    if randomize_type:
+        type = randi() % 6 # Only 0 to 5 are standard temporary powerups/heals
     
     match type:
         PowerupType.SPREAD:
@@ -32,6 +34,15 @@ func _ready() -> void:
         PowerupType.HEAL:
             sprite.self_modulate = Color.HOT_PINK
             label.text = "+"
+        PowerupType.PERM_DMG:
+            sprite.self_modulate = Color.RED
+            label.text = "PWR"
+        PowerupType.PERM_SPEED:
+            sprite.self_modulate = Color.DEEP_SKY_BLUE
+            label.text = "SPD"
+        PowerupType.PERM_HP:
+            sprite.self_modulate = Color.CRIMSON
+            label.text = "+HP"
             
     var notifier = VisibleOnScreenNotifier2D.new()
     notifier.screen_exited.connect(_on_screen_exited)

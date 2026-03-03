@@ -80,4 +80,8 @@ func take_damage(amount: int) -> void:
 
 func die() -> void:
     died.emit(score_value)
+    var powerup = preload("res://scenes/powerup.tscn").instantiate()
+    powerup.global_position = global_position
+    powerup.randomize_type = true
+    get_tree().current_scene.call_deferred("add_child", powerup)
     queue_free()

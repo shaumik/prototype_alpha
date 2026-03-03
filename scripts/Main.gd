@@ -52,6 +52,8 @@ func _ready() -> void:
 	if player:
 		player.died.connect(_on_player_died)
 		player.health_changed.connect(_on_player_health_changed)
+		if player.has_signal("stats_changed"):
+			player.stats_changed.connect(_on_player_stats_changed)
 		health_label.text = "Health: " + str(player.current_health)
 
 func _process(_delta: float) -> void:
@@ -171,4 +173,11 @@ func _on_player_died() -> void:
 	get_tree().reload_current_scene()
 
 func _on_player_health_changed(new_health: int) -> void:
-	health_label.text = "Health: " + str(max(0, new_health))
+	var player = get_node_or_null("Player")
+	if player:
+		health_label.text = "HP: %d | PWR: %d | SPD: %d" % [max(0, new_health), player.base_damage + player.perm_damage_bonus, int(player.speed)]
+	else:
+		health_label.text = "Health: " + str(max(0, new_health))
+
+func _on_player_stats_changed(hp: int, pwr: int, spd: float) -> void:
+	health_label.text = "HP: %d | PWR: %d | SPD: %d" % [max(0, hp), pwr, int(spd)]
