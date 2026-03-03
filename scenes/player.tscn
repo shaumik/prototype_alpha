@@ -1,0 +1,22 @@
+[gd_scene load_steps=4 format=3 uid="uid://cax2xyvxyxyxy"]
+
+[ext_resource type="Script" path="res://scripts/player.gd" id="1_abcd"]
+[ext_resource type="Texture2D" uid="uid://ddxxeyveyyeyy" path="res://assets/player.svg" id="2_efgh"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_p1"]
+radius = 20.0
+
+[node name="Player" type="CharacterBody2D"]
+collision_layer = 1
+collision_mask = 2
+script = ExtResource("1_abcd")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("2_efgh")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, 4)
+shape = SubResource("CircleShape2D_p1")
+
+[node name="Muzzle" type="Marker2D" parent="."]
+position = Vector2(0, -32)

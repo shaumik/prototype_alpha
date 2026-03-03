@@ -1,0 +1,52 @@
+[gd_scene load_steps=4 format=3 uid="uid://cax2xyvxyabc"]
+
+[ext_resource type="Script" path="res://scripts/Main.gd" id="1_main"]
+[ext_resource type="PackedScene" uid="uid://bgxyxyzyzyz" path="res://scenes/background.tscn" id="2_main"]
+[ext_resource type="PackedScene" uid="uid://cax2xyvxyxyxy" path="res://scenes/player.tscn" id="3_main"]
+
+[node name="Main" type="Node"]
+script = ExtResource("1_main")
+
+[node name="Background" parent="." instance=ExtResource("2_main")]
+
+[node name="Player" parent="." instance=ExtResource("3_main")]
+position = Vector2(270, 800)
+
+[node name="SpawnTimer" type="Timer" parent="."]
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="ScoreLabel" type="Label" parent="HUD"]
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 111.0
+offset_bottom = 39.0
+theme_override_font_sizes/font_size = 24
+text = "Score: 0"
+
+[node name="HealthLabel" type="Label" parent="HUD"]
+offset_left = 16.0
+offset_top = 46.0
+offset_right = 111.0
+offset_bottom = 69.0
+theme_override_colors/font_color = Color(1, 0.2, 0.2, 1)
+theme_override_font_sizes/font_size = 20
+text = "Health: 3"
+
+[node name="PowerupLabel" type="Label" parent="HUD"]
+offset_left = 16.0
+offset_top = 76.0
+offset_right = 111.0
+offset_bottom = 99.0
+theme_override_colors/font_color = Color(0.2, 1, 0.2, 1)
+theme_override_font_sizes/font_size = 20
+text = ""
+
+[node name="BossHealthBar" type="ProgressBar" parent="HUD"]
+visible = false
+offset_left = 64.0
+offset_top = 80.0
+offset_right = 476.0
+offset_bottom = 107.0
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+show_percentage = false

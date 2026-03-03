@@ -1,0 +1,13 @@
+# Godot 4+ specific ignores
+.godot/
+*.translation
+*.gdignore
+*.uid
+
+# Export files
+export_presets.cfg
+exported/
+build/
+
+# macOS
+.DS_Store
