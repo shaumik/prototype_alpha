@@ -10,9 +10,9 @@ var can_fire: bool = true
 var is_dead: bool = false
 var screen_size: Vector2
 var fire_timer: Timer
-var powerup_timer: Timer
 
-var current_powerup: int = -1
+var has_spread: bool = false
+var has_pierce: bool = false
 var is_shielded: bool = false
 var default_fire_rate: float
 var base_speed: float
@@ -26,7 +26,7 @@ var perm_speed_bonus: float = 0.0
 var Laser = preload("res://scenes/laser.tscn")
 
 signal health_changed(new_health)
-signal stats_changed(hp, pwr, spd)
+signal stats_changed(hp, pwr, spd, fir)
 signal died
 
 func _ready() -> void:
@@ -40,17 +40,12 @@ func _ready() -> void:
     fire_timer.one_shot = true
     fire_timer.timeout.connect(_on_fire_timer_timeout)
     add_child(fire_timer)
-    
-    powerup_timer = Timer.new()
-    powerup_timer.wait_time = 5.0
-    powerup_timer.one_shot = true
-    powerup_timer.timeout.connect(_on_powerup_timeout)
-    add_child(powerup_timer)
+
     
     call_deferred("emit_stats_changed")
 
 func emit_stats_changed() -> void:
-    stats_changed.emit(current_health, base_damage + perm_damage_bonus, speed)
+    stats_changed.emit(current_health, base_damage + perm_damage_bonus, speed, default_fire_rate)
 
 func _physics_process(_delta: float) -> void:
     if is_dead:
@@ -74,18 +69,20 @@ func fire_weapon() -> void:
     can_fire = false
     fire_timer.start()
     
-    if current_powerup == Powerup.PowerupType.SPREAD:
+    if has_spread:
         for i in range(-1, 2):
             var laser = Laser.instantiate()
             laser.position = muzzle.global_position
             # Angle offset is enough now that laser respects rotation
             laser.rotation = i * 0.2
             laser.damage = base_damage + perm_damage_bonus
+            if has_pierce:
+                laser.is_piercing = true
             get_tree().current_scene.add_child(laser)
     else:
         var laser = Laser.instantiate()
         laser.position = muzzle.global_position
-        if current_powerup == Powerup.PowerupType.PIERCE:
+        if has_pierce:
             laser.is_piercing = true
         laser.damage = base_damage + perm_damage_bonus
         get_tree().current_scene.add_child(laser)
@@ -119,80 +116,57 @@ func die() -> void:
     queue_free()
 
 func apply_powerup(type: int) -> void:
-    if type == Powerup.PowerupType.PERM_DMG:
-        perm_damage_bonus += 1
-        emit_stats_changed()
-        
-        sprite.modulate = Color.RED
-        await get_tree().create_timer(0.2).timeout
-        if not is_shielded:
-            sprite.modulate = Color.WHITE
-        else:
-            sprite.modulate = Color.AQUA
-        return
-    elif type == Powerup.PowerupType.PERM_SPEED:
-        perm_speed_bonus += 20.0
-        base_speed += 20.0
-        speed += 20.0
-        emit_stats_changed()
-        
-        sprite.modulate = Color.DEEP_SKY_BLUE
-        await get_tree().create_timer(0.2).timeout
-        if not is_shielded:
-            sprite.modulate = Color.WHITE
-        else:
-            sprite.modulate = Color.AQUA
-        return
-    elif type == Powerup.PowerupType.PERM_HP:
-        max_health += 1
-        current_health += 1
-        health_changed.emit(current_health)
-        emit_stats_changed()
-        
-        sprite.modulate = Color.CRIMSON
-        await get_tree().create_timer(0.2).timeout
-        if not is_shielded:
-            sprite.modulate = Color.WHITE
-        else:
-            sprite.modulate = Color.AQUA
-        return
-
-    if type == Powerup.PowerupType.HEAL:
-        current_health = min(max_health, current_health + 1)
-        health_changed.emit(current_health)
-        emit_stats_changed()
-        
-        # Flash green
-        sprite.modulate = Color.GREEN
-        await get_tree().create_timer(0.2).timeout
-        if not is_shielded:
-            sprite.modulate = Color.WHITE
-        else:
-            sprite.modulate = Color.AQUA
-        return
-        
-    current_powerup = type
-    
-    # Reset modifications
-    fire_timer.wait_time = default_fire_rate
-    speed = base_speed
-    is_shielded = false
-    sprite.modulate = Color.WHITE
-    
     match type:
-        Powerup.PowerupType.RAPID:
-            fire_timer.wait_time = default_fire_rate * 0.4
-        Powerup.PowerupType.SHIELD:
-            is_shielded = true
-            sprite.modulate = Color.AQUA
+        Powerup.PowerupType.PERM_DMG:
+            perm_damage_bonus += 1
+            sprite.modulate = Color.RED
+            await get_tree().create_timer(0.2).timeout
+        Powerup.PowerupType.PERM_SPEED:
+            perm_speed_bonus += 20.0
+            base_speed += 20.0
+            speed += 20.0
+            sprite.modulate = Color.DEEP_SKY_BLUE
+            await get_tree().create_timer(0.2).timeout
         Powerup.PowerupType.SPEED:
-            speed = base_speed * 1.5
+            perm_speed_bonus += 10.0
+            base_speed += 10.0
+            speed += 10.0
+            sprite.modulate = Color.ORANGE
+            await get_tree().create_timer(0.2).timeout
+        Powerup.PowerupType.PERM_HP:
+            max_health += 1
+            current_health += 1
+            health_changed.emit(current_health)
+            sprite.modulate = Color.CRIMSON
+            await get_tree().create_timer(0.2).timeout
+        Powerup.PowerupType.HEAL:
+            current_health = min(max_health, current_health + 1)
+            health_changed.emit(current_health)
+            sprite.modulate = Color.GREEN
+            await get_tree().create_timer(0.2).timeout
+        Powerup.PowerupType.RAPID:
+            default_fire_rate = max(0.05, default_fire_rate * 0.8)
+            fire_timer.wait_time = default_fire_rate
+            sprite.modulate = Color.YELLOW
+            await get_tree().create_timer(0.2).timeout
+        Powerup.PowerupType.SHIELD:
+            if not is_shielded:
+                is_shielded = true
+            sprite.modulate = Color.AQUA
+            await get_tree().create_timer(0.2).timeout
+        Powerup.PowerupType.SPREAD:
+            has_spread = true
+            sprite.modulate = Color.GREEN
+            await get_tree().create_timer(0.2).timeout
+        Powerup.PowerupType.PIERCE:
+            has_pierce = true
+            sprite.modulate = Color.MAGENTA
+            await get_tree().create_timer(0.2).timeout
             
-    powerup_timer.start()
-
-func _on_powerup_timeout() -> void:
-    current_powerup = -1
-    fire_timer.wait_time = default_fire_rate
-    speed = base_speed
-    if not is_shielded:
-        sprite.modulate = Color.WHITE
+    emit_stats_changed()
+    
+    if is_instance_valid(sprite):
+        if is_shielded:
+            sprite.modulate = Color.AQUA
+        else:
+            sprite.modulate = Color.WHITE

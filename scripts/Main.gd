@@ -13,9 +13,13 @@ var boss_spawned: bool = false
 @export var base_score_for_boss: int = 1500
 var score_to_next_boss: int
 
-@onready var score_label: Label = $HUD/ScoreLabel
-@onready var health_label: Label = $HUD/HealthLabel
-@onready var powerup_label: Label = $HUD/PowerupLabel
+@onready var score_label: Label = $HUD/HUDContainer/ScoreLabel
+@onready var health_label: Label = $HUD/HUDContainer/HealthLabel
+@onready var powerup_label: Label = $HUD/HUDContainer/PowerupLabel
+
+@onready var game_over_screen: Control = $HUD/GameOverScreen
+@onready var final_score_label: Label = $HUD/GameOverScreen/VBoxContainer/FinalScoreLabel
+@onready var game_over_title: Label = $HUD/GameOverScreen/VBoxContainer/Title
 @onready var boss_health_bar: ProgressBar = $HUD/BossHealthBar
 @onready var spawn_timer: Timer = $SpawnTimer
 
@@ -58,15 +62,15 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	var player = get_node_or_null("Player")
-	if player and player.powerup_timer and not player.powerup_timer.is_stopped():
-		var powerup_name = ""
-		match player.current_powerup:
-			0: powerup_name = "Spread"
-			1: powerup_name = "Rapid"
-			2: powerup_name = "Shield"
-			3: powerup_name = "Speed"
-			4: powerup_name = "Pierce"
-		powerup_label.text = powerup_name + " : " + str(int(player.powerup_timer.time_left))
+	if player:
+		var active_perks = ""
+		if player.has_spread:
+			active_perks += "[SPREAD] "
+		if player.has_pierce:
+			active_perks += "[PIERCE] "
+		if player.is_shielded:
+			active_perks += "[SHIELD] "
+		powerup_label.text = active_perks
 	else:
 		powerup_label.text = ""
 
@@ -141,10 +145,13 @@ func _on_boss_health_changed(current: int, maximum: int) -> void:
 func _on_boss_died(points: int) -> void:
 	boss_health_bar.visible = false
 	update_score(points)
-	score_label.text = "Loop " + str(current_loop) + " Cleared!"
 	
-	# Wait, then start next loop
+	# Temporarily show clear message
+	var current_text = score_label.text
+	score_label.text = "Loop " + str(current_loop) + " Cleared!"
 	await get_tree().create_timer(3.0).timeout
+	score_label.text = current_text
+	
 	start_next_loop()
 
 func start_next_loop() -> void:
@@ -165,9 +172,15 @@ func start_next_loop() -> void:
 func _on_player_died() -> void:
 	# Game Over logic
 	spawn_timer.stop()
-	score_label.text = "Game Over!\nFinal Score: " + str(score)
-	health_label.text = "Health: 0"
-	powerup_label.text = ""
+	
+	# Hide standard HUD elements
+	if has_node("HUD/HUDContainer"):
+		$HUD/HUDContainer.visible = false
+	
+	# Show Game Over Screen
+	final_score_label.text = "Final Score: " + str(score)
+	game_over_screen.visible = true
+	
 	# Give a moment before restarting
 	await get_tree().create_timer(3.0).timeout
 	get_tree().reload_current_scene()
@@ -179,5 +192,5 @@ func _on_player_health_changed(new_health: int) -> void:
 	else:
 		health_label.text = "Health: " + str(max(0, new_health))
 
-func _on_player_stats_changed(hp: int, pwr: int, spd: float) -> void:
-	health_label.text = "HP: %d | PWR: %d | SPD: %d" % [max(0, hp), pwr, int(spd)]
+func _on_player_stats_changed(hp: int, pwr: int, spd: float, fir: float) -> void:
+	health_label.text = "HP: %d | PWR: %d | SPD: %d | FIR: %.2fs" % [max(0, hp), pwr, int(spd), fir]
