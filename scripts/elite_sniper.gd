@@ -16,4 +16,5 @@ func _on_fire_timer_timeout() -> void:
         
         laser.collision_layer = 8 # EnemyProjectile
         laser.collision_mask = 1 # Player
+        laser.set_color(Color.RED)
         get_tree().current_scene.add_child(laser)

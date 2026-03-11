@@ -5,8 +5,19 @@ class_name Laser
 @export var damage: int = 1
 
 var is_piercing: bool = false
+var custom_color: Color = Color.WHITE
+
+@onready var sprite: Sprite2D = $Sprite2D
+
+func set_color(color: Color) -> void:
+    custom_color = color
+    if sprite:
+        sprite.modulate = custom_color
 
 func _ready() -> void:
+    if sprite and custom_color != Color.WHITE:
+        sprite.modulate = custom_color
+        
     # Destroy laser when it exits the screen
     var notifier = VisibleOnScreenNotifier2D.new()
     notifier.screen_exited.connect(_on_screen_exited)
