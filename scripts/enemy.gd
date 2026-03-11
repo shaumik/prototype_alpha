@@ -13,7 +13,7 @@ signal died(score)
 @onready var sprite: Sprite2D = $Sprite2D
 
 var PowerupScene = preload("res://scenes/powerup.tscn")
-
+var ExplosionScene = preload(\"res://scenes/explosion.tscn\")\n
 func setup_difficulty(loop: int) -> void:
     current_loop = loop
 
@@ -61,7 +61,7 @@ func take_damage(amount: int) -> void:
         die()
 
 func die() -> void:
-    died.emit(score_value)
+    var expl = ExplosionScene.instantiate()\n    expl.global_position = global_position\n    get_tree().current_scene.call_deferred(\"add_child\", expl)\n    died.emit(score_value)
     
     # 10% chance to drop permanent or temporary powerup
     if randf() < 0.1:

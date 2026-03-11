@@ -25,6 +25,11 @@ var perm_speed_bonus: float = 0.0
 
 var Laser = preload("res://scenes/laser.tscn")
 
+var tex_base = preload("res://assets/player_base.png")
+var tex_spread = preload("res://assets/player_spread.png")
+var tex_pierce = preload("res://assets/player_pierce.png")
+var tex_full = preload("res://assets/player_full.png")
+
 signal health_changed(new_health)
 signal stats_changed(hp, pwr, spd, fir)
 signal died
@@ -43,6 +48,17 @@ func _ready() -> void:
 
     
     call_deferred("emit_stats_changed")
+    update_ship_visuals()
+
+func update_ship_visuals() -> void:
+    if has_spread and has_pierce:
+        sprite.texture = tex_full
+    elif has_spread:
+        sprite.texture = tex_spread
+    elif has_pierce:
+        sprite.texture = tex_pierce
+    else:
+        sprite.texture = tex_base
 
 func emit_stats_changed() -> void:
     stats_changed.emit(current_health, base_damage + perm_damage_bonus, speed, default_fire_rate)
@@ -156,10 +172,12 @@ func apply_powerup(type: int) -> void:
             await get_tree().create_timer(0.2).timeout
         Powerup.PowerupType.SPREAD:
             has_spread = true
+            update_ship_visuals()
             sprite.modulate = Color.GREEN
             await get_tree().create_timer(0.2).timeout
         Powerup.PowerupType.PIERCE:
             has_pierce = true
+            update_ship_visuals()
             sprite.modulate = Color.MAGENTA
             await get_tree().create_timer(0.2).timeout
             

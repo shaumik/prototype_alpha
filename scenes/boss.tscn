@@ -1,7 +1,7 @@
 [gd_scene load_steps=4 format=3 uid="uid://cxdbossabcd"]
 
 [ext_resource type="Script" path="res://scripts/boss.gd" id="1_boss"]
-[ext_resource type="Texture2D" uid="uid://bossxyz" path="res://assets/boss.svg" id="2_boss"]
+[ext_resource type="Texture2D" uid="uid://bossxyz" path="res://assets/boss.png" id="2_boss"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_boss"]
 size = Vector2(96, 96)
