@@ -20,6 +20,7 @@ config/icon="res://icon.svg"
 window/size/viewport_width=540
 window/size/viewport_height=960
 window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
 
 [layer_names]
 
@@ -35,4 +36,5 @@ window/stretch/mode="canvas_items"
 
 [rendering]
 
+environment/defaults/default_clear_color=Color(0, 0, 0, 1)
 textures/vram_compression/import_etc2_astc=true
