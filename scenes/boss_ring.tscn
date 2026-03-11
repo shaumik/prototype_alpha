@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://vr7xn00ceh47"]
 
 [ext_resource type="Script" path="res://scripts/boss_ring.gd" id="1_boss"]
-[ext_resource type="Texture2D" uid="uid://bossxyz" path="res://assets/enemy_boss.png" id="2_boss"]
+[ext_resource type="Texture2D"uid="uid://c1moracgyy3ii" path="res://assets/enemy_boss.png" id="2_boss"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_boss"]
 size = Vector2(96, 96)
