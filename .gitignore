@@ -8,6 +8,7 @@
 export_presets.cfg
 exported/
 build/
+release/
 
 # macOS
 .DS_Store

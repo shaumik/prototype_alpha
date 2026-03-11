@@ -20,6 +20,20 @@ var base_damage: int = 1
 var perm_damage_bonus: int = 0
 var perm_speed_bonus: float = 0.0
 
+# Dash mechanics
+@export var dash_speed_multiplier: float = 3.0
+@export var dash_duration: float = 0.15
+@export var dash_cooldown: float = 1.0
+@export var double_tap_window: float = 0.25
+
+var is_dashing: bool = false
+var dash_time_left: float = 0.0
+var dash_cooldown_left: float = 0.0
+var dash_direction: float = 0.0
+
+var last_left_press_time: float = 0.0
+var last_right_press_time: float = 0.0
+
 @onready var sprite: Sprite2D = $Sprite2D
 @onready var muzzle: Marker2D = $Muzzle
 
@@ -63,9 +77,41 @@ func update_ship_visuals() -> void:
 func emit_stats_changed() -> void:
     stats_changed.emit(current_health, base_damage + perm_damage_bonus, speed, default_fire_rate)
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
     if is_dead:
         return
+        
+    # Update cooldowns
+    if dash_cooldown_left > 0:
+        dash_cooldown_left -= delta
+        
+    if is_dashing:
+        dash_time_left -= delta
+        if dash_time_left <= 0:
+            is_dashing = false
+            sprite.modulate.a = 1.0 # Restore visibility
+        else:
+            # Create a simple ghosting blink effect
+            sprite.modulate.a = 0.5 if Engine.get_frames_drawn() % 4 < 2 else 0.8
+            velocity = Vector2(dash_direction, 0) * (speed * dash_speed_multiplier)
+            move_and_slide()
+            # Clamp to screen
+            position.x = clamp(position.x, 0, screen_size.x)
+            position.y = clamp(position.y, 0, screen_size.y)
+            return # Skip normal movement and shooting while dashing
+
+    # Detect Double Taps for Dash
+    if Input.is_action_just_pressed("ui_left"):
+        var current_time = Time.get_ticks_msec() / 1000.0
+        if current_time - last_left_press_time <= double_tap_window and dash_cooldown_left <= 0:
+            start_dash(-1.0)
+        last_left_press_time = current_time
+        
+    if Input.is_action_just_pressed("ui_right"):
+        var current_time = Time.get_ticks_msec() / 1000.0
+        if current_time - last_right_press_time <= double_tap_window and dash_cooldown_left <= 0:
+            start_dash(1.0)
+        last_right_press_time = current_time
         
     var input_vector := Vector2.ZERO
     input_vector.x = Input.get_axis("ui_left", "ui_right")
@@ -80,6 +126,12 @@ func _physics_process(_delta: float) -> void:
     
     if Input.is_action_pressed("ui_accept") and can_fire:
         fire_weapon()
+
+func start_dash(direction: float) -> void:
+    is_dashing = true
+    dash_direction = direction
+    dash_time_left = dash_duration
+    dash_cooldown_left = dash_cooldown
 
 func fire_weapon() -> void:
     can_fire = false
