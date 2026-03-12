@@ -10,19 +10,26 @@ var custom_color: Color = Color.WHITE
 @onready var sprite: Sprite2D = $Sprite2D
 
 func set_color(color: Color) -> void:
-    custom_color = color
-    if sprite:
-        sprite.modulate = custom_color
+    if collision_layer == 8:
+        custom_color = Color(1.0, 0.2, 0.2) # Very bright red for enemy projectiles
+        if sprite:
+            sprite.hide()
+        queue_redraw()
+    else:
+        custom_color = color
+        if sprite:
+            sprite.modulate = custom_color
 
 func _ready() -> void:
-    if sprite and custom_color != Color.WHITE:
+    if sprite:
         sprite.modulate = custom_color
         
     if collision_layer == 8:
-        # Make the enemy laser more of a dot and brighter
-        scale = Vector2(2.0, 0.7)
+        # Hide the default sprite and use _draw instead
         if sprite:
-            sprite.modulate = Color(1.0, 0.5, 0.5) # Brighter red
+            sprite.hide()
+        scale = Vector2(1, 1) # Reset scale completely
+        queue_redraw()
 
     # Destroy laser when it exits the screen
     var notifier = VisibleOnScreenNotifier2D.new()
@@ -32,6 +39,13 @@ func _ready() -> void:
     # Connect signals for handling damage
     body_entered.connect(_on_body_entered)
     area_entered.connect(_on_area_entered)
+
+func _draw() -> void:
+    if collision_layer == 8:
+        # Draw a perfect bright red circle with radius 12
+        draw_circle(Vector2.ZERO, 12.0, Color(1.0, 0.2, 0.2))
+        # Draw a smaller white core to make it look bright/glowing
+        draw_circle(Vector2.ZERO, 6.0, Color.WHITE)
 
 func _process(delta: float) -> void:
     var direction = Vector2.UP.rotated(rotation)
