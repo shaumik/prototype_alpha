@@ -18,6 +18,12 @@ func _ready() -> void:
     if sprite and custom_color != Color.WHITE:
         sprite.modulate = custom_color
         
+    if collision_layer == 8:
+        # Make the enemy laser more of a dot and brighter
+        scale = Vector2(2.0, 0.7)
+        if sprite:
+            sprite.modulate = Color(1.0, 0.5, 0.5) # Brighter red
+
     # Destroy laser when it exits the screen
     var notifier = VisibleOnScreenNotifier2D.new()
     notifier.screen_exited.connect(_on_screen_exited)
