@@ -31,6 +31,9 @@ var dash_time_left: float = 0.0
 var dash_cooldown_left: float = 0.0
 var dash_direction: float = 0.0
 
+var is_dragging: bool = false
+var drag_touch_index: int = -1
+
 var last_left_press_time: float = 0.0
 var last_right_press_time: float = 0.0
 
@@ -114,18 +117,45 @@ func _physics_process(delta: float) -> void:
         last_right_press_time = current_time
         
     var input_vector := Vector2.ZERO
-    input_vector.x = Input.get_axis("ui_left", "ui_right")
-    input_vector.y = Input.get_axis("ui_up", "ui_down")
-    
-    velocity = input_vector.normalized() * speed
+    if not is_dragging:
+        input_vector.x = Input.get_axis("ui_left", "ui_right")
+        input_vector.y = Input.get_axis("ui_up", "ui_down")
+        velocity = input_vector.normalized() * speed
+    else:
+        velocity = Vector2.ZERO
+        
     move_and_slide()
     
     # Clamp to screen
     position.x = clamp(position.x, 0, screen_size.x)
     position.y = clamp(position.y, 0, screen_size.y)
     
-    if Input.is_action_pressed("ui_accept") and can_fire:
+    if (Input.is_action_pressed("ui_accept") or is_dragging) and can_fire:
         fire_weapon()
+func _input(event: InputEvent) -> void:
+    if is_dead or is_dashing:
+        return
+        
+    if event is InputEventScreenTouch:
+        if event.pressed and not is_dragging:
+            is_dragging = true
+            drag_touch_index = event.index
+            
+            var current_time = Time.get_ticks_msec() / 1000.0
+            if event.position.x < screen_size.x / 2.0:
+                if current_time - last_left_press_time <= double_tap_window and dash_cooldown_left <= 0:
+                    start_dash(-1.0)
+                last_left_press_time = current_time
+            else:
+                if current_time - last_right_press_time <= double_tap_window and dash_cooldown_left <= 0:
+                    start_dash(1.0)
+                last_right_press_time = current_time
+        elif not event.pressed and event.index == drag_touch_index:
+            is_dragging = false
+            drag_touch_index = -1
+            
+    elif event is InputEventScreenDrag and is_dragging and event.index == drag_touch_index:
+        position += event.relative
 
 func start_dash(direction: float) -> void:
     is_dashing = true
