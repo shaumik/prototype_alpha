@@ -6,6 +6,8 @@ class_name Laser
 
 var is_piercing: bool = false
 var custom_color: Color = Color.WHITE
+var lifespan: float = -1.0
+var bounces_left: int = 0
 
 @onready var sprite: Sprite2D = $Sprite2D
 
@@ -48,8 +50,30 @@ func _draw() -> void:
         draw_circle(Vector2.ZERO, 6.0, Color.WHITE)
 
 func _process(delta: float) -> void:
+    if lifespan > 0.0:
+        lifespan -= delta
+        if lifespan <= 0.0:
+            queue_free()
+            
     var direction = Vector2.UP.rotated(rotation)
-    position += direction * speed * delta
+    
+    if bounces_left > 0:
+        var screen_rect = get_viewport_rect()
+        var next_pos = global_position + direction * speed * delta
+        var bounced = false
+        
+        if next_pos.x < 0 or next_pos.x > screen_rect.size.x:
+            direction.x *= -1
+            bounced = true
+        elif next_pos.y < 0 or next_pos.y > screen_rect.size.y:
+            direction.y *= -1
+            bounced = true
+            
+        if bounced:
+            rotation = direction.angle() - PI/2
+            bounces_left -= 1
+            
+    position += Vector2.UP.rotated(rotation) * speed * delta
 
 func _on_screen_exited() -> void:
     queue_free()

@@ -27,6 +27,7 @@ func setup_difficulty(loop: int) -> void:
 	current_loop = loop
 
 func _ready() -> void:
+	add_to_group("enemies")
 	max_health += (current_loop - 1)
 	speed *= (1.0 + (current_loop - 1) * 0.2)
 	score_value *= current_loop

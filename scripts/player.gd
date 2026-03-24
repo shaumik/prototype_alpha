@@ -14,6 +14,12 @@ var fire_timer: Timer
 var has_spread: bool = false
 var has_pierce: bool = false
 var is_shielded: bool = false
+var has_nova: bool = false
+var nova_cooldown: float = 0.0
+var has_homing: bool = false
+var homing_cooldown: float = 0.0
+var has_shotgun: bool = false
+var has_ricochet: bool = false
 var default_fire_rate: float
 var base_speed: float
 var base_damage: int = 1
@@ -95,6 +101,12 @@ func _physics_process(delta: float) -> void:
     if is_dead:
         return
         
+    if nova_cooldown > 0:
+        nova_cooldown -= delta
+        
+    if homing_cooldown > 0:
+        homing_cooldown -= delta
+        
     # Update cooldowns
     if dash_cooldown_left > 0:
         dash_cooldown_left -= delta
@@ -141,7 +153,12 @@ func _physics_process(delta: float) -> void:
     position.x = clamp(position.x, 0, screen_size.x)
     position.y = clamp(position.y, 0, screen_size.y)
     
-    if (Input.is_action_pressed("ui_accept") or is_dragging) and can_fire:
+    var is_firing = (Input.is_action_pressed("ui_accept") or is_dragging)
+    
+    if has_node("Muzzle/Beam"):
+        $Muzzle/Beam.is_firing = is_firing
+        
+    if is_firing and can_fire:
         fire_weapon()
 func _input(event: InputEvent) -> void:
     if is_dead or is_dashing:
@@ -179,6 +196,40 @@ func fire_weapon() -> void:
     fire_timer.start()
     play_audio(sfx_shoot)
     
+    for d in get_tree().get_nodes_in_group("drones"):
+        if is_instance_valid(d) and d.player == self and d.has_method("fire") and not d.is_queued_for_deletion():
+            d.fire()
+            
+    if has_nova and nova_cooldown <= 0:
+        var nova_scene = preload("res://scenes/nova.tscn")
+        var nova = nova_scene.instantiate()
+        nova.position = global_position
+        nova.damage = (base_damage + perm_damage_bonus) * 5
+        get_parent().add_child(nova)
+        nova_cooldown = 2.0
+        
+    if has_homing and homing_cooldown <= 0:
+        var missile_scene = preload("res://scenes/missile.tscn")
+        var missile = missile_scene.instantiate()
+        missile.global_position = global_position
+        missile.damage = (base_damage + perm_damage_bonus) * 3
+        get_parent().add_child(missile)
+        homing_cooldown = 1.0 # 1 missile per second
+        
+    if has_shotgun:
+        for i in range(-2, 3):
+            var laser = Laser.instantiate()
+            laser.position = muzzle.global_position
+            laser.rotation = (i * 0.25) + randf_range(-0.05, 0.05)
+            laser.custom_color = fire_color
+            laser.damage = base_damage + perm_damage_bonus
+            laser.lifespan = 0.25
+            if has_pierce:
+                laser.is_piercing = true
+            if has_ricochet:
+                laser.bounces_left = 3
+            get_tree().current_scene.add_child(laser)
+    
     if has_spread:
         for i in range(-1, 2):
             var laser = Laser.instantiate()
@@ -189,6 +240,8 @@ func fire_weapon() -> void:
             laser.damage = base_damage + perm_damage_bonus
             if has_pierce:
                 laser.is_piercing = true
+            if has_ricochet:
+                laser.bounces_left = 3
             get_tree().current_scene.add_child(laser)
     else:
         var laser = Laser.instantiate()
@@ -196,6 +249,8 @@ func fire_weapon() -> void:
         laser.custom_color = fire_color
         if has_pierce:
             laser.is_piercing = true
+        if has_ricochet:
+            laser.bounces_left = 3
         laser.damage = base_damage + perm_damage_bonus
         get_tree().current_scene.add_child(laser)
 
@@ -284,6 +339,39 @@ func apply_powerup(type: int) -> void:
             fire_color = Color.ROYAL_BLUE
             sprite.modulate = Color.ROYAL_BLUE
             await get_tree().create_timer(0.2).timeout
+        Powerup.PowerupType.DRONE:
+            var drone_scene = preload("res://scenes/drone.tscn")
+            var drone = drone_scene.instantiate()
+            drone.player = self
+            drone.add_to_group("drones")
+            get_parent().add_child(drone)
+            reorganize_drones()
+            sprite.modulate = Color.SLATE_BLUE
+            await get_tree().create_timer(0.2).timeout
+        Powerup.PowerupType.NOVA:
+            has_nova = true
+            sprite.modulate = Color.ORANGE_RED
+            await get_tree().create_timer(0.2).timeout
+        Powerup.PowerupType.HOMING:
+            has_homing = true
+            sprite.modulate = Color.GHOST_WHITE
+            await get_tree().create_timer(0.2).timeout
+        Powerup.PowerupType.BEAM:
+            if not has_node("Muzzle/Beam"):
+                var beam_scene = preload("res://scenes/beam.tscn")
+                var beam = beam_scene.instantiate()
+                beam.name = "Beam"
+                $Muzzle.add_child(beam)
+            sprite.modulate = Color.CORNFLOWER_BLUE
+            await get_tree().create_timer(0.2).timeout
+        Powerup.PowerupType.SHOTGUN:
+            has_shotgun = true
+            sprite.modulate = Color.DARK_RED
+            await get_tree().create_timer(0.2).timeout
+        Powerup.PowerupType.RICOCHET:
+            has_ricochet = true
+            sprite.modulate = Color.PLUM
+            await get_tree().create_timer(0.2).timeout
             
     emit_stats_changed()
     
@@ -297,3 +385,14 @@ func _draw() -> void:
     if is_shielded:
         draw_circle(Vector2.ZERO, 32.0, Color(0.0, 1.0, 1.0, 0.15))
         draw_arc(Vector2.ZERO, 32.0, 0, TAU, 32, Color(0.0, 1.0, 1.0, 0.6), 2.0)
+
+func reorganize_drones() -> void:
+    var existing_drones = []
+    for d in get_tree().get_nodes_in_group("drones"):
+        if is_instance_valid(d) and d.player == self and not d.is_queued_for_deletion():
+            existing_drones.append(d)
+    var count = existing_drones.size()
+    if count > 0:
+        var angle = TAU / count
+        for i in range(count):
+            existing_drones[i].orbit_angle = i * angle
