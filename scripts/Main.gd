@@ -42,6 +42,15 @@ var boss_variants: Array = [
 ]
 
 func _ready() -> void:
+	var bgm = AudioStreamPlayer.new()
+	var bgm_stream = load("res://assets/audio/Neon_Nebula_Navigator.ogg")
+	if bgm_stream is AudioStreamOggVorbis:
+		bgm_stream.loop = true
+	bgm.stream = bgm_stream
+	bgm.volume_db = -15.0
+	bgm.autoplay = true
+	add_child(bgm)
+
 	current_spawn_rate = initial_spawn_rate
 	score_to_next_boss = base_score_for_boss
 	

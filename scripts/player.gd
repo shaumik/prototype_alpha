@@ -19,6 +19,7 @@ var base_speed: float
 var base_damage: int = 1
 var perm_damage_bonus: int = 0
 var perm_speed_bonus: float = 0.0
+var fire_color: Color = Color.WHITE
 
 # Dash mechanics
 @export var dash_speed_multiplier: float = 3.0
@@ -46,6 +47,16 @@ var tex_base = preload("res://assets/player_base.png")
 var tex_spread = preload("res://assets/player_spread.png")
 var tex_pierce = preload("res://assets/player_pierce.png")
 var tex_full = preload("res://assets/player_full.png")
+
+var sfx_shoot = preload("res://assets/audio/shoot.wav")
+var sfx_damage = preload("res://assets/audio/player_damage.wav")
+
+func play_audio(stream: AudioStream) -> void:
+    var player = AudioStreamPlayer.new()
+    player.stream = stream
+    player.finished.connect(player.queue_free)
+    add_child(player)
+    player.play()
 
 signal health_changed(new_health)
 signal stats_changed(hp, pwr, spd, fir)
@@ -166,6 +177,7 @@ func start_dash(direction: float) -> void:
 func fire_weapon() -> void:
     can_fire = false
     fire_timer.start()
+    play_audio(sfx_shoot)
     
     if has_spread:
         for i in range(-1, 2):
@@ -173,6 +185,7 @@ func fire_weapon() -> void:
             laser.position = muzzle.global_position
             # Angle offset is enough now that laser respects rotation
             laser.rotation = i * 0.2
+            laser.custom_color = fire_color
             laser.damage = base_damage + perm_damage_bonus
             if has_pierce:
                 laser.is_piercing = true
@@ -180,6 +193,7 @@ func fire_weapon() -> void:
     else:
         var laser = Laser.instantiate()
         laser.position = muzzle.global_position
+        laser.custom_color = fire_color
         if has_pierce:
             laser.is_piercing = true
         laser.damage = base_damage + perm_damage_bonus
@@ -190,15 +204,18 @@ func _on_fire_timer_timeout() -> void:
 
 func take_damage(amount: int) -> void:
     if is_dead: return
+    if is_dashing: return
     
     if is_shielded:
         is_shielded = false
         sprite.modulate = Color.WHITE
+        queue_redraw()
         return
         
     current_health -= amount
     health_changed.emit(current_health)
     emit_stats_changed()
+    play_audio(sfx_damage)
     
     # Simple flash effect
     sprite.modulate = Color.RED
@@ -217,7 +234,8 @@ func apply_powerup(type: int) -> void:
     match type:
         Powerup.PowerupType.PERM_DMG:
             perm_damage_bonus += 1
-            sprite.modulate = Color.RED
+            fire_color = Color.CYAN
+            sprite.modulate = Color.CYAN
             await get_tree().create_timer(0.2).timeout
         Powerup.PowerupType.PERM_SPEED:
             perm_speed_bonus += 20.0
@@ -229,38 +247,42 @@ func apply_powerup(type: int) -> void:
             perm_speed_bonus += 10.0
             base_speed += 10.0
             speed += 10.0
-            sprite.modulate = Color.ORANGE
+            sprite.modulate = Color.TURQUOISE
             await get_tree().create_timer(0.2).timeout
         Powerup.PowerupType.PERM_HP:
             max_health += 1
             current_health += 1
             health_changed.emit(current_health)
-            sprite.modulate = Color.CRIMSON
+            sprite.modulate = Color.LIME_GREEN
             await get_tree().create_timer(0.2).timeout
         Powerup.PowerupType.HEAL:
             current_health = min(max_health, current_health + 1)
             health_changed.emit(current_health)
-            sprite.modulate = Color.GREEN
+            sprite.modulate = Color.PALE_GREEN
             await get_tree().create_timer(0.2).timeout
         Powerup.PowerupType.RAPID:
             default_fire_rate = max(0.05, default_fire_rate * 0.8)
             fire_timer.wait_time = default_fire_rate
-            sprite.modulate = Color.YELLOW
+            fire_color = Color.SPRING_GREEN
+            sprite.modulate = Color.SPRING_GREEN
             await get_tree().create_timer(0.2).timeout
         Powerup.PowerupType.SHIELD:
             if not is_shielded:
                 is_shielded = true
+                queue_redraw()
             sprite.modulate = Color.AQUA
             await get_tree().create_timer(0.2).timeout
         Powerup.PowerupType.SPREAD:
             has_spread = true
             update_ship_visuals()
-            sprite.modulate = Color.GREEN
+            fire_color = Color.SEA_GREEN
+            sprite.modulate = Color.SEA_GREEN
             await get_tree().create_timer(0.2).timeout
         Powerup.PowerupType.PIERCE:
             has_pierce = true
             update_ship_visuals()
-            sprite.modulate = Color.MAGENTA
+            fire_color = Color.ROYAL_BLUE
+            sprite.modulate = Color.ROYAL_BLUE
             await get_tree().create_timer(0.2).timeout
             
     emit_stats_changed()
@@ -270,3 +292,8 @@ func apply_powerup(type: int) -> void:
             sprite.modulate = Color.AQUA
         else:
             sprite.modulate = Color.WHITE
+
+func _draw() -> void:
+    if is_shielded:
+        draw_circle(Vector2.ZERO, 32.0, Color(0.0, 1.0, 1.0, 0.15))
+        draw_arc(Vector2.ZERO, 32.0, 0, TAU, 32, Color(0.0, 1.0, 1.0, 0.6), 2.0)

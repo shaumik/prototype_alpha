@@ -14,6 +14,14 @@ signal died(score)
 
 var PowerupScene = preload("res://scenes/powerup.tscn")
 var ExplosionScene = preload("res://scenes/explosion.tscn")
+var sfx_hit = preload("res://assets/audio/hit.wav")
+
+func play_audio(stream: AudioStream) -> void:
+	var player = AudioStreamPlayer.new()
+	player.stream = stream
+	player.finished.connect(player.queue_free)
+	get_tree().current_scene.add_child(player)
+	player.play()
 
 func setup_difficulty(loop: int) -> void:
 	current_loop = loop
@@ -52,6 +60,7 @@ func _on_area_entered(area: Area2D) -> void:
 
 func take_damage(amount: int) -> void:
 	current_health -= amount
+	play_audio(sfx_hit)
 	
 	sprite.modulate = Color.RED
 	await get_tree().create_timer(0.1).timeout
