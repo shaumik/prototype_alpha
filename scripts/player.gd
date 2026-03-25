@@ -1,7 +1,7 @@
 extends CharacterBody2D
 class_name Player
 
-@export var speed: float = 300.0
+@export var speed: float = 400.0
 @export var max_health: int = 3
 @export var fire_rate: float = 0.2
 
@@ -10,6 +10,7 @@ var can_fire: bool = true
 var is_dead: bool = false
 var screen_size: Vector2
 var fire_timer: Timer
+var is_invincible: bool = false
 
 var has_spread: bool = false
 var has_pierce: bool = false
@@ -28,8 +29,8 @@ var perm_speed_bonus: float = 0.0
 var fire_color: Color = Color.WHITE
 
 # Dash mechanics
-@export var dash_speed_multiplier: float = 3.0
-@export var dash_duration: float = 0.15
+@export var dash_speed_multiplier: float = 1.5
+@export var dash_duration: float = 0.25
 @export var dash_cooldown: float = 1.0
 @export var double_tap_window: float = 0.25
 
@@ -40,6 +41,7 @@ var dash_direction: float = 0.0
 
 var is_dragging: bool = false
 var drag_touch_index: int = -1
+var drag_offset: Vector2 = Vector2.ZERO
 
 var last_left_press_time: float = 0.0
 var last_right_press_time: float = 0.0
@@ -141,11 +143,11 @@ func _physics_process(delta: float) -> void:
         
     var input_vector := Vector2.ZERO
     if not is_dragging:
-        input_vector.x = Input.get_axis("ui_left", "ui_right")
-        input_vector.y = Input.get_axis("ui_up", "ui_down")
-        velocity = input_vector.normalized() * speed
+        input_vector = Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
+        velocity = velocity.lerp(input_vector * speed, 15.0 * delta)
     else:
-        velocity = Vector2.ZERO
+        velocity = drag_offset / delta
+        drag_offset = Vector2.ZERO
         
     move_and_slide()
     
@@ -183,7 +185,7 @@ func _input(event: InputEvent) -> void:
             drag_touch_index = -1
             
     elif event is InputEventScreenDrag and is_dragging and event.index == drag_touch_index:
-        position += event.relative
+        drag_offset += event.relative
 
 func start_dash(direction: float) -> void:
     is_dashing = true
@@ -260,11 +262,14 @@ func _on_fire_timer_timeout() -> void:
 func take_damage(amount: int) -> void:
     if is_dead: return
     if is_dashing: return
+    if is_invincible: return
     
     if is_shielded:
         is_shielded = false
         sprite.modulate = Color.WHITE
         queue_redraw()
+        # Add brief invincibility when shield breaks too
+        trigger_invincibility()
         return
         
     current_health -= amount
@@ -272,13 +277,22 @@ func take_damage(amount: int) -> void:
     emit_stats_changed()
     play_audio(sfx_damage)
     
-    # Simple flash effect
-    sprite.modulate = Color.RED
-    await get_tree().create_timer(0.1).timeout
-    sprite.modulate = Color.WHITE
+    trigger_invincibility()
     
     if current_health <= 0:
         die()
+
+func trigger_invincibility() -> void:
+    is_invincible = true
+    
+    # Blinking invincibility indicator
+    var tw = create_tween()
+    tw.set_loops(6)
+    tw.tween_property(sprite, "modulate:a", 0.2, 0.1)
+    tw.tween_property(sprite, "modulate:a", 1.0, 0.1)
+    
+    await get_tree().create_timer(1.2).timeout
+    is_invincible = false
 
 func die() -> void:
     is_dead = true

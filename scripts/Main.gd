@@ -70,18 +70,7 @@ func _ready() -> void:
 		health_label.text = "Health: " + str(player.current_health)
 
 func _process(_delta: float) -> void:
-	var player = get_node_or_null("Player")
-	if player:
-		var active_perks = ""
-		if player.has_spread:
-			active_perks += "[SPREAD] "
-		if player.has_pierce:
-			active_perks += "[PIERCE] "
-		if player.is_shielded:
-			active_perks += "[SHIELD] "
-		powerup_label.text = active_perks
-	else:
-		powerup_label.text = ""
+	powerup_label.text = ""
 
 func _on_spawn_timer_timeout() -> void:
 	spawn_enemy()

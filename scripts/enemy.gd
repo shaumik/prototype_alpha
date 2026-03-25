@@ -2,7 +2,7 @@ extends Area2D
 class_name Enemy
 
 @export var speed: float = 150.0
-@export var max_health: int = 2
+@export var max_health: int = 1
 @export var score_value: int = 100
 
 var current_health: int
